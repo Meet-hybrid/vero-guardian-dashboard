@@ -5,6 +5,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { WalletProvider } from '@/context/WalletContext';
 import { RoleProvider } from '@/context/RoleContext';
 import { ToastProvider } from '@/components/Toast';
+import { ErrorProvider } from '@/components/ErrorModal';
 import { ThemeProvider } from '@/context/ThemeContext';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: RootLayoutProps): ReactElement 
           <WalletProvider>
             <RoleProvider>
               <ToastProvider>
-                {children}
+                <ErrorProvider>
+                  {children}
+                </ErrorProvider>
               </ToastProvider>
             </RoleProvider>
           </WalletProvider>
