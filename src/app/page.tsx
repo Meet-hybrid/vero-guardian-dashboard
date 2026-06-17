@@ -12,6 +12,7 @@ import { AccessControl } from '@/components/Guard';
 import LanguageToggle from '@/components/LanguageToggle';
 import NetworkStatus from '@/components/NetworkStatus';
 import PRFeed from '@/components/PRFeed';
+import SecurityScannerResults from '@/components/security';
 import TaskCard from '@/components/TaskCard';
 import ThemeToggle from '@/components/ThemeToggle';
 import TransactionFeed from '@/components/TransactionFeed';
@@ -190,6 +191,12 @@ export default function Home(): ReactElement {
 
             <ErrorBoundary>
               <TransactionFeed />
+            </ErrorBoundary>
+
+            <ErrorBoundary>
+              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+                <SecurityScannerResults />
+              </div>
             </ErrorBoundary>
 
             <AccessControl roles={['admin']}>
