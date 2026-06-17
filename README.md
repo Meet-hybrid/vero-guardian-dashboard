@@ -98,6 +98,7 @@ Each Guardian's trust score is tracked as `vero_reputation` on their Stellar acc
               ├── <PRFeed />                 # Fetches open PRs, renders list
               │     └── <VoteCard pr={...} />  # Per-PR card with guarded vote button
               ├── <TransactionFeed />        # Live Horizon transaction stream
+              ├── <GasHeatmap />             # Per-function gas usage heatmap (D3)
               ├── <AccessControl />          # Role-gated Admin vs Guardian UI
               ├── <ReputationBadge />        # Reads vero_reputation from Horizon
               ├── <Toast />                  # Success/error notifications
@@ -184,6 +185,7 @@ GitHub Webhook  ──►  POST /github-webhook
 | Styling | Tailwind CSS | Utility-first UI |
 | Blockchain | [Stellar](https://stellar.org/) / Soroban | On-chain vote storage |
 | Wallet | [Freighter](https://www.freighter.app/) | Transaction signing |
+| Visualization | [D3](https://d3js.org/) (`d3-scale`, `d3-scale-chromatic`) | Gas usage heatmap |
 | Stellar SDK | `@stellar/stellar-base`, `@stellar/stellar-sdk` | TX building & Horizon calls |
 | Relayer | Node.js + Express | GitHub webhook ingestion |
 | HTTP Client | Axios | API requests |
@@ -209,6 +211,7 @@ vero-guardian-dashboard/
 │   │   ├── VoteCard.tsx        # PR card with vote button + state
 │   │   ├── PRFeed.tsx          # Scrollable PR list
 │   │   ├── TransactionFeed/    # Live Horizon transaction stream feed
+│   │   ├── GasHeatmap/         # Per-function gas usage heatmap (D3)
 │   │   ├── ConnectButton.tsx   # Freighter connect/disconnect
 │   │   ├── TaskCard.tsx        # Generic task display card
 │   │   ├── Toast.tsx           # Success/error notification toasts
@@ -275,7 +278,7 @@ Expected relayer output:
 [relayer] Listening on port 3000
 [webhook] Merged PR #42 with wave-contribution — registering on chain
 [stellar] Registering PR #42 on testnet
-[stellar] Source key loaded: YES
+[stellar] Source key loaded: YES (hardware-backed vault)
 [stellar] Transaction compiled: {
   "operation": "manageData",
   "key": "task_42",
@@ -309,11 +312,13 @@ NEXT_PUBLIC_HORIZON_URL=https://horizon-testnet.stellar.org
 # Optional Horizon account that stores admin/guardian role map entries
 NEXT_PUBLIC_ROLE_REGISTRY_ACCOUNT=G...
 
-# Relayer: Guardian's Stellar secret key (server-side only, never expose to browser)
-STELLAR_SECRET_KEY=S...
-
 # Relayer: target network
 STELLAR_NETWORK=testnet
+
+# Relayer vault metadata. Store only encrypted vault records in env/config.
+RELAYER_VAULT_KEY_PROVIDER=hardware
+RELAYER_VAULT_HARDWARE_BACKED=true
+RELAYER_VAULT_STELLAR_SECRET_KEY={...encrypted vault record...}
 ```
 
 | Variable | Description | Default |
@@ -321,10 +326,12 @@ STELLAR_NETWORK=testnet
 | `NEXT_PUBLIC_SOROBAN_RPC_URL` | Soroban RPC endpoint | `https://soroban-testnet.stellar.org` |
 | `NEXT_PUBLIC_HORIZON_URL` | Stellar Horizon REST API | `https://horizon-testnet.stellar.org` |
 | `NEXT_PUBLIC_ROLE_REGISTRY_ACCOUNT` | Optional Horizon account containing admin/guardian role map entries | connected wallet account |
-| `STELLAR_SECRET_KEY` | Relayer signing key (server only) | — |
 | `STELLAR_NETWORK` | `testnet` or `mainnet` | `testnet` |
+| `RELAYER_VAULT_KEY_PROVIDER` | Hardware-backed vault key provider identifier | `hardware` |
+| `RELAYER_VAULT_HARDWARE_BACKED` | Must be `true` when relayer vault keys are backed by OS/HSM storage | — |
+| `RELAYER_VAULT_STELLAR_SECRET_KEY` | Encrypted vault record for the relayer signing key | — |
 
-> **Security:** `STELLAR_SECRET_KEY` must never be prefixed with `NEXT_PUBLIC_`. It is only read by the Node.js relayer process, never sent to the browser.
+> **Security:** Do not store raw relayer secrets such as `STELLAR_SECRET_KEY` in `.env` files. Store encrypted vault records and unwrap them with a hardware-backed provider.
 
 ---
 
@@ -665,6 +672,27 @@ Logs are buffered in memory and flushed in batches to encrypted local records. E
 Integrity is tamper-evident, not tamper-proof. Each encrypted record is linked with a SHA-256 hash chain (`previousHash` and `hash`), and exports include a SHA-256 digest over the retained record hashes. `verifyAuditLogIntegrity()` detects modified encrypted payloads, reordered records, broken links, and manifest mismatches where retained metadata is available.
 
 `exportAuditLogs()` creates `audit-log-YYYY-MM-DD.json.enc`. If the File System Access API is available, the browser can prompt for a save location; otherwise the logger falls back to a downloadable encrypted Blob. Browsers do not allow silent continuous writes to arbitrary local files, so the dashboard preserves encrypted local records continuously and uses explicit user-triggered export for local files.
+### Gas Usage Heatmap
+
+`GasHeatmap` visualizes Soroban resource cost per contract function so gas spikes become obvious at a glance. Functions are rows; resource categories (CPU instructions, memory, ledger reads, ledger writes, events) are columns. Each cell is colored with a D3 sequential scale (`d3-scale-chromatic`'s `interpolateYlOrRd`) and positioned with `d3-scale`'s `scaleBand`. Color **intensity is normalized per metric column**, so the most expensive function for each resource stands out, and those cells are flagged as **hotspots** (also summarized below the grid) — satisfying "hotspots identified".
+
+```tsx
+import GasHeatmap, { type FunctionGasUsage } from '@/components/GasHeatmap';
+
+// Default: representative per-function costs for the Vero contract.
+<GasHeatmap />
+
+// Inject real data (e.g. from testnet transaction simulation).
+const usage: FunctionGasUsage[] = [
+  { functionName: 'cast_vote', costs: { cpuInsns: 12_500_000, memBytes: 524_288, ledgerReads: 8, ledgerWrites: 3, events: 2 } },
+  // ...
+];
+<GasHeatmap data={usage} />
+```
+
+The pure helpers `buildHeatmap()`, `findHotspots()`, and `formatGas()` are exported and unit-tested independently of rendering. The dataset is held in local component state and is injectable via the `data` prop, so a live testnet simulation feed can replace the default without changing the view.
+
+> **Jest note:** D3 v4+ ships ESM-only packages. `jest.config.js` overrides `transformIgnorePatterns` to transform the `d3-*` modules used here.
 
 ---
 
@@ -715,11 +743,14 @@ The `stellar.js` module handles transaction compilation:
 
 ```javascript
 // stellar.js
+const { getVaultSecretStatus } = require('./src/services/vault-node');
+
 async function registerTaskOnChain(githubId) {
-  const secretKey = process.env.STELLAR_SECRET_KEY || '(not set)';
+  const keyStatus = getVaultSecretStatus('STELLAR_SECRET_KEY');
   const network = process.env.STELLAR_NETWORK || 'testnet';
 
   console.log(`[stellar] Registering PR #${githubId} on ${network}`);
+  console.log(`[stellar] Source key loaded: ${keyStatus.configured ? 'YES (vault)' : 'NO (vault entry missing)'}`);
 
   const txPayload = {
     operation: 'manageData',
