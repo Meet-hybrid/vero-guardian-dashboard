@@ -24,6 +24,7 @@ Guardians connect their [Freighter](https://www.freighter.app/) wallet, browse t
   - [Security Scanner Results](#security-scanner-results)
   - [Guardian Reputation](#guardian-reputation)
   - [Wallet Context](#wallet-context)
+  - [Local Audit Log Export](#local-audit-log-export)
   - [Webhook Relayer](#webhook-relayer)
 - [API Reference](#api-reference)
 - [Testing](#testing)
@@ -650,6 +651,20 @@ import TransactionFeed, {
 ```
 
 A `subscribe` prop receives `{ onMessage, onError }` and returns an unsubscribe function, so the component can be driven without a network connection in unit tests. The Horizon endpoint is read from `NEXT_PUBLIC_HORIZON_URL` (defaults to `https://horizon-testnet.stellar.org`).
+
+---
+
+### Local Audit Log Export
+
+`src/utils/logger.ts` preserves meaningful audit activity outside React component state. `TransactionFeed` appends each unique streamed Horizon transaction, and `VoteButton` records vote submission success or failure. The public API includes `createAuditLogger`, `appendAuditEvent`, `flushAuditLogs`, `exportAuditLogs`, `readEncryptedAuditLogs`, `readAuditLogEvents`, `verifyAuditLogIntegrity`, `clearAuditLogs`, and `parseEncryptedAuditExport`.
+
+Audit events use safe fields: `id`, ISO `timestamp`, `type`, `actor`, `action`, `resource`, `resourceId`, `status`, sanitized `metadata`, `requestId`, and monotonic local `sequence`. Metadata is treated as untrusted: keys such as `privateKey`, `secretKey`, `seed`, `seedPhrase`, `mnemonic`, `password`, `token`, `accessToken`, `refreshToken`, `authorization`, `apiKey`, and `secret` are redacted; circular values, functions, class instances, and oversized nested values are bounded before logging.
+
+Logs are buffered in memory and flushed in batches to encrypted local records. Each record is encrypted with Web Crypto `AES-GCM` and a fresh random IV before persistence. The logger stores encrypted records and a manifest in `localStorage`, capped to a bounded retained window to avoid unbounded growth. A non-extractable AES key is stored in IndexedDB when the browser allows it; if IndexedDB key storage is unavailable, the logger falls back to a session-only key, meaning encrypted records remain persisted but may not be decryptable after the tab closes.
+
+Integrity is tamper-evident, not tamper-proof. Each encrypted record is linked with a SHA-256 hash chain (`previousHash` and `hash`), and exports include a SHA-256 digest over the retained record hashes. `verifyAuditLogIntegrity()` detects modified encrypted payloads, reordered records, broken links, and manifest mismatches where retained metadata is available.
+
+`exportAuditLogs()` creates `audit-log-YYYY-MM-DD.json.enc`. If the File System Access API is available, the browser can prompt for a save location; otherwise the logger falls back to a downloadable encrypted Blob. Browsers do not allow silent continuous writes to arbitrary local files, so the dashboard preserves encrypted local records continuously and uses explicit user-triggered export for local files.
 
 ---
 
