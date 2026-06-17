@@ -18,8 +18,6 @@ export default function PRFeed() {
   const { t } = useTranslation();
   const [prs, setPrs] = useState<PR[]>([]);
   const [loading, setLoading] = useState(true);
-  const { publicKey } = useWallet();
-
   useEffect(() => {
     // Mock data - replace with real API fetch
     const mockPRs: PR[] = [
