@@ -33,10 +33,12 @@ export function WidgetGrid({ widgets, storageKey = 'vero-dashboard-layout' }: Wi
   const [activeLayout, setActiveLayout] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
+  const widgetIdsStr = widgets.map(w => w.id).join(',');
+
   useEffect(() => {
     setIsMounted(true);
     const savedLayout = localStorage.getItem(storageKey);
-    const validIds = widgets.map(w => w.id);
+    const validIds = widgetIdsStr.split(',').filter(Boolean);
     
     if (savedLayout) {
       try {
@@ -50,7 +52,7 @@ export function WidgetGrid({ widgets, storageKey = 'vero-dashboard-layout' }: Wi
     } else {
       setActiveLayout(validIds);
     }
-  }, [widgets, storageKey]);
+  }, [widgetIdsStr, storageKey]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
