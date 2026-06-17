@@ -48,10 +48,10 @@ export default function ConnectButton() {
 
   if (isConnected && publicKey) {
     return (
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-800">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 px-2 sm:px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-800 shadow-sm">
           <Wallet className="w-4 h-4" aria-hidden="true" />
-          <span className="text-sm font-mono">{truncateAddress(publicKey)}</span>
+          <span className="hidden sm:inline text-xs sm:text-sm font-mono">{truncateAddress(publicKey)}</span>
         </div>
         <button
           onClick={disconnect}
@@ -59,6 +59,7 @@ export default function ConnectButton() {
           className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <LogOut className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden md:inline text-sm font-medium">Disconnect</span>
         </button>
       </div>
     );
