@@ -1,30 +1,35 @@
 'use client';
 
 import type { ReactElement } from 'react';
+import type { TFunction } from 'i18next';
 import { Activity, ArrowRight, CheckCircle2, Code2, Shield, Trophy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import ConnectButton from '@/components/ConnectButton';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import GlobalStateSearch from '@/components/GlobalStateSearch';
 import { AccessControl } from '@/components/Guard';
+import LanguageToggle from '@/components/LanguageToggle';
 import NetworkStatus from '@/components/NetworkStatus';
 import PRFeed from '@/components/PRFeed';
 import TaskCard from '@/components/TaskCard';
 import ThemeToggle from '@/components/ThemeToggle';
+import TransactionFeed from '@/components/TransactionFeed';
 import { useRole } from '@/context/RoleContext';
 import { useWallet } from '@/context/WalletContext';
 import type { UserRole } from '@/services/roleClient';
 
-function getRoleLabel(role: UserRole, isLoading: boolean): string {
+function getRoleLabel(role: UserRole, isLoading: boolean, t: TFunction): string {
   if (isLoading) {
-    return 'Checking…';
+    return t('role.checking');
   }
 
   switch (role) {
     case 'admin':
-      return 'Admin';
+      return t('common.admin');
     case 'guardian':
-      return 'Guardian';
+      return t('common.guardian');
     default:
-      return 'Unauthorized';
+      return t('common.unauthorized');
   }
 }
 
@@ -32,60 +37,63 @@ function getRoleHelperText(
   role: UserRole,
   isConnected: boolean,
   isLoading: boolean,
+  t: TFunction,
 ): string {
   if (isLoading) {
-    return 'Checking on-chain role';
+    return t('role.checkingOnChain');
   }
 
   if (!isConnected) {
-    return 'Connect wallet';
+    return t('wallet.connectHelper');
   }
 
   if (role === 'unauthorized') {
-    return 'No dashboard permissions';
+    return t('role.noPermissions');
   }
 
-  return 'On-chain access';
+  return t('role.onChainAccess');
 }
 
 function getWelcomeTitle(
   isConnected: boolean,
   isRoleLoading: boolean,
   roleLabel: string,
+  t: TFunction,
 ): string {
   if (!isConnected) {
-    return 'Welcome to Vero Guardian!';
+    return t('welcome.guestTitle');
   }
 
   if (isRoleLoading) {
-    return 'Checking dashboard access…';
+    return t('welcome.checkingTitle');
   }
 
-  return `Welcome back, ${roleLabel}!`;
+  return t('welcome.returningTitle', { role: roleLabel });
 }
 
-function getWelcomeDescription(role: UserRole, isRoleLoading: boolean): string {
+function getWelcomeDescription(role: UserRole, isRoleLoading: boolean, t: TFunction): string {
   if (isRoleLoading) {
-    return 'Checking your on-chain role before enabling dashboard actions.';
+    return t('welcome.checkingDescription');
   }
 
   switch (role) {
     case 'admin':
-      return 'Manage guardian tasks, monitor validation activity, and keep the network secure.';
+      return t('welcome.adminDescription');
     case 'guardian':
-      return 'Review and validate pull requests to maintain network security and earn rewards.';
+      return t('welcome.guardianDescription');
     default:
-      return 'Connect an authorized wallet to review and validate pull requests.';
+      return t('welcome.guestDescription');
   }
 }
 
 export default function Home(): ReactElement {
+  const { t } = useTranslation();
   const { isConnected, reputation } = useWallet();
   const { role, isLoading: isRoleLoading } = useRole();
-  const roleLabel = getRoleLabel(role, isRoleLoading);
-  const roleHelperText = getRoleHelperText(role, isConnected, isRoleLoading);
-  const welcomeTitle = getWelcomeTitle(isConnected, isRoleLoading, roleLabel);
-  const welcomeDescription = getWelcomeDescription(role, isRoleLoading);
+  const roleLabel = getRoleLabel(role, isRoleLoading, t);
+  const roleHelperText = getRoleHelperText(role, isConnected, isRoleLoading, t);
+  const welcomeTitle = getWelcomeTitle(isConnected, isRoleLoading, roleLabel, t);
+  const welcomeDescription = getWelcomeDescription(role, isRoleLoading, t);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
@@ -98,11 +106,12 @@ export default function Home(): ReactElement {
                 <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" aria-hidden="true" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white leading-tight">Vero Guardian</h1>
-                <p className="hidden sm:block text-xs text-slate-600 dark:text-slate-400">Decentralized Validation Network</p>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Vero Guardian</h1>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{t('app.networkName')}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-3">
+              <LanguageToggle />
               <ThemeToggle />
               <ConnectButton />
             </div>
@@ -128,21 +137,21 @@ export default function Home(): ReactElement {
                 <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-[1.02]">
                   <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-1">
                     <Trophy className="w-4 h-4" aria-hidden="true" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Reputation</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider">{t('stats.reputation')}</span>
                   </div>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">{isConnected ? reputation : '---'}</p>
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-[1.02]">
                   <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-1">
                     <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Validations</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider">{t('stats.validations')}</span>
                   </div>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">{isConnected ? 12 : '---'}</p>
                 </div>
                 <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-[1.02]">
                   <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 mb-1">
                     <Shield className="w-4 h-4" aria-hidden="true" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Role</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider">{t('stats.role')}</span>
                   </div>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white" aria-live="polite">{roleLabel}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{roleHelperText}</p>
@@ -150,9 +159,9 @@ export default function Home(): ReactElement {
                 <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-[1.02]">
                   <div className="flex items-center gap-2 text-sky-700 dark:text-sky-400 mb-1">
                     <Activity className="w-4 h-4" aria-hidden="true" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Active</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider">{t('common.active')}</span>
                   </div>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{isConnected ? 'Yes' : 'No'}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{isConnected ? t('common.yes') : t('common.no')}</p>
                 </div>
               </div>
             </div>
@@ -171,13 +180,23 @@ export default function Home(): ReactElement {
           </div>
 
           {/* Right Column - Admin Management & Quick Actions */}
-          <div className="space-y-6 order-1 lg:order-2">
+          <div className="space-y-6">
+            <ErrorBoundary>
+              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+                <GlobalStateSearch />
+              </div>
+            </ErrorBoundary>
+
+            <ErrorBoundary>
+              <TransactionFeed />
+            </ErrorBoundary>
+
             <AccessControl roles={['admin']}>
               {/* Admin Management */}
               <ErrorBoundary>
                 <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-lg">
                   <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 mb-3">
-                    Admin Management
+                    {t('admin.management')}
                   </p>
                   <TaskCard />
                 </div>
@@ -188,28 +207,28 @@ export default function Home(): ReactElement {
             <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-lg">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <Code2 className="w-5 h-5 text-violet-600 dark:text-violet-400" aria-hidden="true" />
-                Quick Actions
+                {t('actions.heading')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3">
                 <button 
                   className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 transition-colors group focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  aria-label="View Network Status"
+                  aria-label={t('actions.networkStatus')}
                 >
-                  <span className="font-medium text-sm sm:text-base">Network Status</span>
+                  <span className="font-medium">{t('actions.networkStatus')}</span>
                   <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors" aria-hidden="true" />
                 </button>
                 <button 
                   className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 transition-colors group focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  aria-label="Stake VERO Tokens"
+                  aria-label={t('actions.stake')}
                 >
-                  <span className="font-medium text-sm sm:text-base">Stake VERO</span>
+                  <span className="font-medium">{t('actions.stake')}</span>
                   <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors" aria-hidden="true" />
                 </button>
                 <button 
                   className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 transition-colors group focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  aria-label="View Rewards History"
+                  aria-label={t('actions.rewards')}
                 >
-                  <span className="font-medium text-sm sm:text-base">Rewards History</span>
+                  <span className="font-medium">{t('actions.rewards')}</span>
                   <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors" aria-hidden="true" />
                 </button>
               </div>
@@ -223,12 +242,12 @@ export default function Home(): ReactElement {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex flex-col gap-6">
             <NetworkStatus />
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100 dark:border-slate-900">
-              <p className="text-sm text-slate-600 dark:text-slate-500 order-2 md:order-1">© 2026 Vero Guardian. All rights reserved.</p>
-              <nav className="flex items-center gap-4 sm:gap-6 order-1 md:order-2" aria-label="Footer Navigation">
-                <a href="#" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:underline">Docs</a>
-                <a href="#" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:underline">Discord</a>
-                <a href="#" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:underline">GitHub</a>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="text-sm text-slate-600 dark:text-slate-500">{t('app.footerCopyright')}</p>
+              <nav className="flex items-center gap-6" aria-label={t('app.footerNavigation')}>
+                <a href="#" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors focus:outline-none focus:underline">{t('common.documentation')}</a>
+                <a href="#" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors focus:outline-none focus:underline">{t('common.discord')}</a>
+                <a href="#" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors focus:outline-none focus:underline">{t('common.github')}</a>
               </nav>
             </div>
           </div>
