@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import VoteCard from '@/components/VoteCard';
-import { GitPullRequest, Loader2 } from 'lucide-react';
+import VoteButton from '@/components/VoteButton';
+import { GitPullRequest, Loader2, ExternalLink } from 'lucide-react';
+import { useWallet } from '@/context/WalletContext';
 
 interface PR {
   id: number;
@@ -16,6 +17,7 @@ interface PR {
 export default function PRFeed() {
   const [prs, setPrs] = useState<PR[]>([]);
   const [loading, setLoading] = useState(true);
+  const { publicKey } = useWallet();
 
   useEffect(() => {
     // Mock data - replace with real API fetch
@@ -63,39 +65,50 @@ export default function PRFeed() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <GitPullRequest className="w-5 h-5 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Pending Validations</h2>
-        <span className="ml-auto px-2.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-full border border-slate-200 dark:border-slate-700">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <GitPullRequest className="w-5 h-5 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Pending Validations</h2>
+        </div>
+        <span className="px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 text-sm font-medium rounded-full border border-indigo-100 dark:border-indigo-800">
           {prs.length} PRs
         </span>
       </div>
       
       <div className="space-y-3">
         {prs.map((pr) => (
-          <div key={pr.id} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm">
-            <div className="flex-1">
-              <a 
-                href={pr.url} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="font-medium text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-1"
-                aria-label={`PR number ${pr.id}: ${pr.title}`}
-              >
-                #{pr.id} {pr.title}
-              </a>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="text-sm text-slate-600 dark:text-slate-400">{pr.author}</span>
-                <span className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+          <div key={pr.id} className="bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-sm hover:shadow-md group">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2">
+                <a 
+                  href={pr.url} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="font-semibold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded flex items-center gap-2 group/link"
+                  aria-label={`PR number ${pr.id}: ${pr.title}`}
+                >
+                  <span className="text-slate-500 dark:text-slate-400 font-mono text-sm">#{pr.id}</span>
+                  <span className="truncate">{pr.title}</span>
+                  <ExternalLink className="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity" />
+                </a>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                <span className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold">
+                    {pr.author.charAt(1).toUpperCase()}
+                  </div>
+                  {pr.author}
+                </span>
+                <span className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+                  <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                   <span>{pr.votes} votes</span>
                 </span>
               </div>
             </div>
-            <div className="w-full sm:w-auto">
-              <VoteCard pr={pr} />
+            <div className="flex sm:justify-end">
+              <VoteButton prId={pr.id} publicKey={publicKey} />
             </div>
           </div>
         ))}

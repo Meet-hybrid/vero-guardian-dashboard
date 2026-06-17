@@ -91,18 +91,18 @@ export default function Home(): ReactElement {
     <div className="min-h-screen bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
       {/* Header */}
       <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-900/30">
-                <Shield className="w-6 h-6 text-white" aria-hidden="true" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-indigo-900/30">
+                <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" aria-hidden="true" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Vero Guardian</h1>
-                <p className="text-xs text-slate-600 dark:text-slate-400">Decentralized Validation Network</p>
+                <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white leading-tight">Vero Guardian</h1>
+                <p className="hidden sm:block text-xs text-slate-600 dark:text-slate-400">Decentralized Validation Network</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <ThemeToggle />
               <ConnectButton />
             </div>
@@ -111,35 +111,35 @@ export default function Home(): ReactElement {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Welcome / Stats */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-white to-slate-100 dark:from-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-xl">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          <div className="bg-gradient-to-r from-white to-slate-100 dark:from-slate-900 dark:to-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 sm:p-6 shadow-xl">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="text-center lg:text-left">
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2">
                   {welcomeTitle}
                 </h2>
-                <p className="text-slate-600 dark:text-slate-400 max-w-xl">
+                <p className="text-slate-600 dark:text-slate-400 max-w-xl mx-auto lg:mx-0">
                   {welcomeDescription}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-4">
-                <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 w-full lg:w-auto">
+                <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-[1.02]">
                   <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-1">
                     <Trophy className="w-4 h-4" aria-hidden="true" />
                     <span className="text-xs font-semibold uppercase tracking-wider">Reputation</span>
                   </div>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">{isConnected ? reputation : '---'}</p>
                 </div>
-                <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700">
+                <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-[1.02]">
                   <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-1">
                     <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                     <span className="text-xs font-semibold uppercase tracking-wider">Validations</span>
                   </div>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">{isConnected ? 12 : '---'}</p>
                 </div>
-                <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700">
+                <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-[1.02]">
                   <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400 mb-1">
                     <Shield className="w-4 h-4" aria-hidden="true" />
                     <span className="text-xs font-semibold uppercase tracking-wider">Role</span>
@@ -147,7 +147,7 @@ export default function Home(): ReactElement {
                   <p className="text-2xl font-bold text-slate-900 dark:text-white" aria-live="polite">{roleLabel}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{roleHelperText}</p>
                 </div>
-                <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700">
+                <div className="bg-white/80 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700 shadow-sm transition-transform hover:scale-[1.02]">
                   <div className="flex items-center gap-2 text-sky-700 dark:text-sky-400 mb-1">
                     <Activity className="w-4 h-4" aria-hidden="true" />
                     <span className="text-xs font-semibold uppercase tracking-wider">Active</span>
@@ -162,20 +162,20 @@ export default function Home(): ReactElement {
         {/* Dashboard Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - PR Feed */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-2 lg:order-1">
             <ErrorBoundary>
-              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-lg">
                 <PRFeed />
               </div>
             </ErrorBoundary>
           </div>
 
           {/* Right Column - Admin Management & Quick Actions */}
-          <div className="space-y-6">
+          <div className="space-y-6 order-1 lg:order-2">
             <AccessControl roles={['admin']}>
               {/* Admin Management */}
               <ErrorBoundary>
-                <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+                <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-lg">
                   <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 mb-3">
                     Admin Management
                   </p>
@@ -185,31 +185,31 @@ export default function Home(): ReactElement {
             </AccessControl>
 
             {/* Quick Actions */}
-            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-lg">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <Code2 className="w-5 h-5 text-violet-600 dark:text-violet-400" aria-hidden="true" />
                 Quick Actions
               </h3>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3">
                 <button 
                   className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 transition-colors group focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   aria-label="View Network Status"
                 >
-                  <span className="font-medium">View Network Status</span>
+                  <span className="font-medium text-sm sm:text-base">Network Status</span>
                   <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors" aria-hidden="true" />
                 </button>
                 <button 
                   className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 transition-colors group focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   aria-label="Stake VERO Tokens"
                 >
-                  <span className="font-medium">Stake VERO Tokens</span>
+                  <span className="font-medium text-sm sm:text-base">Stake VERO</span>
                   <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors" aria-hidden="true" />
                 </button>
                 <button 
                   className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 transition-colors group focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   aria-label="View Rewards History"
                 >
-                  <span className="font-medium">Rewards History</span>
+                  <span className="font-medium text-sm sm:text-base">Rewards History</span>
                   <ArrowRight className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white transition-colors" aria-hidden="true" />
                 </button>
               </div>
@@ -220,15 +220,15 @@ export default function Home(): ReactElement {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 mt-12 bg-white dark:bg-slate-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex flex-col gap-6">
             <NetworkStatus />
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-slate-600 dark:text-slate-500">© 2026 Vero Guardian. All rights reserved.</p>
-              <nav className="flex items-center gap-6" aria-label="Footer Navigation">
-                <a href="#" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors focus:outline-none focus:underline">Documentation</a>
-                <a href="#" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors focus:outline-none focus:underline">Discord</a>
-                <a href="#" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors focus:outline-none focus:underline">GitHub</a>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100 dark:border-slate-900">
+              <p className="text-sm text-slate-600 dark:text-slate-500 order-2 md:order-1">© 2026 Vero Guardian. All rights reserved.</p>
+              <nav className="flex items-center gap-4 sm:gap-6 order-1 md:order-2" aria-label="Footer Navigation">
+                <a href="#" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:underline">Docs</a>
+                <a href="#" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:underline">Discord</a>
+                <a href="#" className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors focus:outline-none focus:underline">GitHub</a>
               </nav>
             </div>
           </div>
