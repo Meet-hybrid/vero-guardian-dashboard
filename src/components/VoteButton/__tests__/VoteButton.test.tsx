@@ -3,6 +3,7 @@ import VoteButton from '@/components/VoteButton';
 import { castVote } from '@/services/contractClient';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/components/Toast';
+import { appendAuditEvent } from '@/utils/logger';
 
 const mockForceSync = jest.fn();
 
@@ -13,18 +14,14 @@ jest.mock('@/context/RoleContext', () => ({
   useRole: jest.fn(),
 }));
 jest.mock('@/components/Toast');
-jest.mock('@/hooks/useChainState', () => ({
-  useChainState: () => ({
-    forceSync: mockForceSync,
-    isSyncing: false,
-    status: 'idle',
-    syncVersion: 0,
-  }),
+jest.mock('@/utils/logger', () => ({
+  appendAuditEvent: jest.fn(() => Promise.resolve()),
 }));
 
 const mockCastVote = castVote as jest.MockedFunction<typeof castVote>;
 const mockUseRole = useRole as jest.MockedFunction<typeof useRole>;
 const mockUseToast = useToast as jest.MockedFunction<typeof useToast>;
+const mockAppendAuditEvent = appendAuditEvent as jest.MockedFunction<typeof appendAuditEvent>;
 const mockShowToast = jest.fn();
 const mockRefreshRole = jest.fn();
 
@@ -73,8 +70,15 @@ describe('VoteButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => expect(mockCastVote).toHaveBeenCalledWith(42, 'GPUBKEY'));
-    expect(mockForceSync).toHaveBeenCalledWith(
-      expect.arrayContaining(['dashboard', 'prs', 'transactions', 'account:GPUBKEY', 'reputation:GPUBKEY']),
+    await waitFor(() =>
+      expect(mockAppendAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'vote-42-deafhash',
+          type: 'guardian.vote',
+          action: 'vote_submitted',
+          status: 'success',
+        }),
+      ),
     );
   });
 
@@ -122,5 +126,12 @@ describe('VoteButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => expect(mockShowToast).toHaveBeenCalledWith('Horizon error', 'error'));
+    expect(mockAppendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'guardian.vote',
+        action: 'vote_failed',
+        status: 'failure',
+      }),
+    );
   });
 });
