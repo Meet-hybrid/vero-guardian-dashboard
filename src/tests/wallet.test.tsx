@@ -10,6 +10,17 @@ jest.mock('@stellar/freighter-api', () => ({
   getPublicKey: jest.fn(),
   signTransaction: jest.fn(),
 }));
+jest.mock('@/lib/stellar-interact', () => ({
+  getReputation: jest.fn(async () => 0),
+}));
+jest.mock('@/hooks/useChainState', () => ({
+  useChainState: () => ({
+    forceSync: jest.fn(),
+    isSyncing: false,
+    status: 'idle',
+    syncVersion: 0,
+  }),
+}));
 
 import * as freighter from '@stellar/freighter-api';
 
@@ -87,7 +98,7 @@ function TestComponent() {
       <div data-testid="is-connected">{isConnected ? 'Connected' : 'Disconnected'}</div>
       <div data-testid="is-loading">{isLoading ? 'Loading' : 'Ready'}</div>
       <div data-testid="error">{error || 'No error'}</div>
-      <button onClick={connect} data-testid="connect-btn">
+      <button onClick={() => connect()} data-testid="connect-btn">
         Connect
       </button>
       <button onClick={disconnect} data-testid="disconnect-btn">

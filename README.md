@@ -20,8 +20,11 @@ Guardians connect their [Freighter](https://www.freighter.app/) wallet, browse t
 - [Environment Variables](#environment-variables)
 - [Key Concepts](#key-concepts)
   - [Casting a Vote](#casting-a-vote)
+  - [Batch Transaction Builder](#batch-transaction-builder)
+  - [Security Scanner Results](#security-scanner-results)
   - [Guardian Reputation](#guardian-reputation)
   - [Wallet Context](#wallet-context)
+  - [Local Audit Log Export](#local-audit-log-export)
   - [Webhook Relayer](#webhook-relayer)
 - [API Reference](#api-reference)
 - [Testing](#testing)
@@ -91,9 +94,11 @@ Each Guardian's trust score is tracked as `vero_reputation` on their Stellar acc
 <RootLayout>
   └── <WalletContext.Provider>
         └── <RoleContext.Provider>
-              ├── <ConnectButton />          # Freighter wallet connect/disconnect
+              ├── <ConnectButton />          # Multi-wallet picker (Freighter, Rabet)
               ├── <PRFeed />                 # Fetches open PRs, renders list
               │     └── <VoteCard pr={...} />  # Per-PR card with guarded vote button
+              ├── <TransactionFeed />        # Live Horizon transaction stream
+              ├── <GasHeatmap />             # Per-function gas usage heatmap (D3)
               ├── <AccessControl />          # Role-gated Admin vs Guardian UI
               ├── <ReputationBadge />        # Reads vero_reputation from Horizon
               ├── <Toast />                  # Success/error notifications
@@ -180,6 +185,7 @@ GitHub Webhook  ──►  POST /github-webhook
 | Styling | Tailwind CSS | Utility-first UI |
 | Blockchain | [Stellar](https://stellar.org/) / Soroban | On-chain vote storage |
 | Wallet | [Freighter](https://www.freighter.app/) | Transaction signing |
+| Visualization | [D3](https://d3js.org/) (`d3-scale`, `d3-scale-chromatic`) | Gas usage heatmap |
 | Stellar SDK | `@stellar/stellar-base`, `@stellar/stellar-sdk` | TX building & Horizon calls |
 | Relayer | Node.js + Express | GitHub webhook ingestion |
 | HTTP Client | Axios | API requests |
@@ -204,6 +210,8 @@ vero-guardian-dashboard/
 │   ├── components/
 │   │   ├── VoteCard.tsx        # PR card with vote button + state
 │   │   ├── PRFeed.tsx          # Scrollable PR list
+│   │   ├── TransactionFeed/    # Live Horizon transaction stream feed
+│   │   ├── GasHeatmap/         # Per-function gas usage heatmap (D3)
 │   │   ├── ConnectButton.tsx   # Freighter connect/disconnect
 │   │   ├── TaskCard.tsx        # Generic task display card
 │   │   ├── Toast.tsx           # Success/error notification toasts
@@ -212,7 +220,8 @@ vero-guardian-dashboard/
 │   ├── context/
 │   │   └── WalletContext.tsx   # Global wallet state (publicKey)
 │   ├── lib/
-│   │   └── stellar-interact.ts # castVote(), getReputation()
+│   │   ├── stellar-interact.ts # castVote(), getReputation()
+│   │   └── wallets/            # Stellar wallet provider adapters + registry
 │   └── utils/
 │       └── stellar-interact.ts # Utility re-exports
 ├── .env.example                # Required environment variables
@@ -269,7 +278,7 @@ Expected relayer output:
 [relayer] Listening on port 3000
 [webhook] Merged PR #42 with wave-contribution — registering on chain
 [stellar] Registering PR #42 on testnet
-[stellar] Source key loaded: YES
+[stellar] Source key loaded: YES (hardware-backed vault)
 [stellar] Transaction compiled: {
   "operation": "manageData",
   "key": "task_42",
@@ -303,11 +312,13 @@ NEXT_PUBLIC_HORIZON_URL=https://horizon-testnet.stellar.org
 # Optional Horizon account that stores admin/guardian role map entries
 NEXT_PUBLIC_ROLE_REGISTRY_ACCOUNT=G...
 
-# Relayer: Guardian's Stellar secret key (server-side only, never expose to browser)
-STELLAR_SECRET_KEY=S...
-
 # Relayer: target network
 STELLAR_NETWORK=testnet
+
+# Relayer vault metadata. Store only encrypted vault records in env/config.
+RELAYER_VAULT_KEY_PROVIDER=hardware
+RELAYER_VAULT_HARDWARE_BACKED=true
+RELAYER_VAULT_STELLAR_SECRET_KEY={...encrypted vault record...}
 ```
 
 | Variable | Description | Default |
@@ -315,10 +326,12 @@ STELLAR_NETWORK=testnet
 | `NEXT_PUBLIC_SOROBAN_RPC_URL` | Soroban RPC endpoint | `https://soroban-testnet.stellar.org` |
 | `NEXT_PUBLIC_HORIZON_URL` | Stellar Horizon REST API | `https://horizon-testnet.stellar.org` |
 | `NEXT_PUBLIC_ROLE_REGISTRY_ACCOUNT` | Optional Horizon account containing admin/guardian role map entries | connected wallet account |
-| `STELLAR_SECRET_KEY` | Relayer signing key (server only) | — |
 | `STELLAR_NETWORK` | `testnet` or `mainnet` | `testnet` |
+| `RELAYER_VAULT_KEY_PROVIDER` | Hardware-backed vault key provider identifier | `hardware` |
+| `RELAYER_VAULT_HARDWARE_BACKED` | Must be `true` when relayer vault keys are backed by OS/HSM storage | — |
+| `RELAYER_VAULT_STELLAR_SECRET_KEY` | Encrypted vault record for the relayer signing key | — |
 
-> **Security:** `STELLAR_SECRET_KEY` must never be prefixed with `NEXT_PUBLIC_`. It is only read by the Node.js relayer process, never sent to the browser.
+> **Security:** Do not store raw relayer secrets such as `STELLAR_SECRET_KEY` in `.env` files. Store encrypted vault records and unwrap them with a hardware-backed provider.
 
 ---
 
@@ -413,6 +426,62 @@ export function VoteCard({ pr }: { pr: PR }) {
 
 ---
 
+### Batch Transaction Builder
+
+`src/services/txBuilder.ts` provides a reusable batch transaction engine for flows that need to submit more than one Stellar operation in a single wallet approval. It accepts an ordered operation list, loads or reuses safe account sequence state, builds one Stellar transaction, asks Freighter to sign the unsigned XDR, and submits the signed transaction through Horizon.
+
+```typescript
+import * as StellarSdk from '@stellar/stellar-sdk';
+import { signAndBroadcastBatchTransaction } from '@/services/txBuilder';
+
+const result = await signAndBroadcastBatchTransaction({
+  sourceAccount: publicKey,
+  networkPassphrase: StellarSdk.Networks.TESTNET,
+  operations: [
+    StellarSdk.Operation.manageData({ name: 'vote_42', value: 'approve' }),
+    StellarSdk.Operation.manageData({ name: 'audit_42', value: 'reviewed' }),
+  ],
+});
+
+console.log(result.hash);
+```
+
+For custom signing flows, call `buildBatchTransaction()` to get an unsigned envelope XDR, pass that XDR to the existing wallet signing flow, then submit with `broadcastSignedBatchTransaction()`. The builder only caches non-sensitive sequence metadata after successful submissions and invalidates that cache if Horizon returns `tx_bad_seq`.
+
+#### Builder UI
+
+`src/components/BatchTxBuilder` is the Guardian-facing interface for that engine. Operations are composed and edited entirely in local React state — add vote, manage-data, or native payment operations, reorder them to control execution order, and remove any before submitting — so the batch can be assembled with no network round-trips. Each draft is validated as it is entered (PR numbers, data-name byte limits, Stellar destination addresses, and amounts) and is only converted into a `StellarOperation` at build time, so a malformed operation can never reach signing.
+
+```tsx
+import BatchTxBuilder from '@/components/BatchTxBuilder';
+
+// Reads the connected key from WalletContext and broadcasts through
+// the shared batch transaction builder in a single wallet approval.
+<BatchTxBuilder />
+```
+
+Pressing **Build & broadcast** maps the queue to ordered operations and calls `signAndBroadcastBatchTransaction()`, so the whole batch is signed and submitted as one transaction. A `broadcaster` prop can be supplied to inject a custom builder (used in tests). No private keys are handled, requested, logged, or stored.
+
+---
+
+### Security Scanner Results
+
+`src/components/security/` provides a reusable UI module for static-analysis and vulnerability scanner JSON. The dashboard renders `<SecurityScannerResults />` with a local JSON input, and callers can also pass scanner output directly:
+
+```tsx
+import SecurityScannerResults from '@/components/security';
+
+<SecurityScannerResults results={scannerJson} />
+```
+
+Supported scanner fields include `id`, `ruleId`, `cve`, `title`, `message`, `description`, `severity`, `level`, `package`, `dependency`, `file`, `path`, `line`, `recommendation`, `fix`, and safe `http`/`https` URLs. Arrays, common `{ findings: [...] }` style objects, SARIF `runs[].results`, and npm-audit-style `vulnerabilities` maps are normalized into one warning shape.
+
+Severity is normalized case-insensitively: `critical`, `high`, `medium`, `moderate`, `low`, `info`, `warning`, and `error` are supported. `error` maps to `high`; `warning` and `moderate` map to `medium`; unknown values remain `unknown`.
+
+Scanner fields are treated as untrusted. The parser strips HTML/script/style markup, masks obvious secret/token/password values, rejects unsafe URL protocols such as `javascript:`, and the UI renders values as React text nodes without `dangerouslySetInnerHTML`.
+
+---
+
 ### Guardian Reputation
 
 Each Guardian's reputation score is stored as a `vero_reputation` `manageData` entry on their Stellar account. Stellar encodes all data values as base64, so the value is decoded on read:
@@ -455,16 +524,21 @@ export function ReputationBadge() {
 
 ### Wallet Context
 
-The `WalletContext` provides a resilient Freighter wallet connection state with localStorage-backed persistence that is verified against the current Freighter address before use.
+The `WalletContext` provides a resilient Stellar wallet connection state with localStorage-backed persistence, supporting multiple standard wallet providers through a pluggable adapter registry (`src/lib/wallets/`).
 
 Key features:
 
-- Stores the verified `publicKey` under `vero_wallet_publicKey` in `localStorage`.
-- Verifies persisted keys against Freighter `isConnected()`/`getAddress()` before restoring UI state.
+- **Multi-wallet support** — connect via any registered provider (currently [Freighter](https://www.freighter.app/) and [Rabet](https://rabet.io/)). `ConnectButton` renders a picker of detected wallets.
+- Stores the verified `publicKey` under `vero_wallet_publicKey` and the active provider id under `vero_wallet_provider` in `localStorage`.
+- Verifies persisted Freighter keys against `isConnected()`/`getAddress()` before restoring UI state; non-Freighter sessions require an explicit reconnect after reload.
 - `WatchWalletChanges` and `freighter-account-change` listeners clear or update wallet state when the active Freighter account changes.
-- `connect()` uses `@stellar/freighter-api`'s `requestAccess()` and surfaces errors.
-- `disconnect()` clears state and stored key.
-- Exposes `isLoading`, `error`, and `reputation` states for UI feedback.
+- `connect(providerId?)` resolves the chosen adapter (defaults to Freighter) and surfaces errors; passing an invalid value safely falls back to Freighter.
+- `disconnect()` clears state and stored keys.
+- Exposes `isLoading`, `error`, `reputation`, `activeProvider`, and `availableProviders` for UI feedback.
+
+#### Adding a wallet provider
+
+Implement the `StellarWalletProvider` interface (`id`, `name`, `isAvailable()`, `connect()`) in a new module under `src/lib/wallets/`, then add it to the `walletProviders` array in `src/lib/wallets/index.ts`. The picker and context pick it up automatically.
 
 API
 
@@ -473,19 +547,22 @@ API
 
 ```ts
 type UseWallet = {
-  publicKey: string | null;       // Stellar public key when connected
-  isConnected: boolean;          // shorthand for !!publicKey
-  isLoading: boolean;            // true while connecting or initializing
-  error: string | null;          // human-friendly error message
-  reputation: number;            // current reputation score shown in the dashboard
-  connect(): Promise<void>;      // prompts Freighter to return public key
-  disconnect(): void;            // clears key and localStorage
+  publicKey: string | null;              // Stellar public key when connected
+  isConnected: boolean;                  // shorthand for !!publicKey
+  isLoading: boolean;                    // true while connecting or initializing
+  error: string | null;                  // human-friendly error message
+  reputation: number;                    // current reputation score shown in the dashboard
+  activeProvider: WalletProviderId | null; // provider backing the connection
+  availableProviders: WalletProviderInfo[]; // detected wallets + availability
+  connect(providerId?: WalletProviderId): Promise<void>; // defaults to Freighter
+  disconnect(): void;                    // clears key and localStorage
 };
 ```
 
 Constants
 
-- Storage key: `vero_wallet_publicKey`
+- Public key storage key: `vero_wallet_publicKey`
+- Active provider storage key: `vero_wallet_provider`
 - Freighter event: `freighter-account-change`
 
 Example usage
@@ -576,6 +653,63 @@ Use `AccessControl` to hide admin-only UI from Guardians and unauthorized wallet
 
 ---
 
+### Live Transaction Feed
+
+`TransactionFeed` subscribes to Horizon's transaction stream (Server-Sent Events via `server.transactions().cursor('now').stream(...)`) and renders incoming network transactions in real time — newest first, capped at `MAX_FEED_ENTRIES` (25) and de-duplicated by transaction id. Each row links to the transaction on Stellar Expert, shows the source account, ledger sequence, operation count, and a success/failure indicator, with a live connection status badge.
+
+The stream source is injectable for testing and customization:
+
+```tsx
+import TransactionFeed, {
+  createHorizonTransactionStream,
+} from '@/components/TransactionFeed';
+
+// Default: live Horizon stream from NEXT_PUBLIC_HORIZON_URL (testnet fallback).
+<TransactionFeed />
+
+// Custom endpoint or a mock subscriber in tests.
+<TransactionFeed subscribe={createHorizonTransactionStream('https://horizon.stellar.org')} />
+```
+
+A `subscribe` prop receives `{ onMessage, onError }` and returns an unsubscribe function, so the component can be driven without a network connection in unit tests. The Horizon endpoint is read from `NEXT_PUBLIC_HORIZON_URL` (defaults to `https://horizon-testnet.stellar.org`).
+
+---
+
+### Local Audit Log Export
+
+`src/utils/logger.ts` preserves meaningful audit activity outside React component state. `TransactionFeed` appends each unique streamed Horizon transaction, and `VoteButton` records vote submission success or failure. The public API includes `createAuditLogger`, `appendAuditEvent`, `flushAuditLogs`, `exportAuditLogs`, `readEncryptedAuditLogs`, `readAuditLogEvents`, `verifyAuditLogIntegrity`, `clearAuditLogs`, and `parseEncryptedAuditExport`.
+
+Audit events use safe fields: `id`, ISO `timestamp`, `type`, `actor`, `action`, `resource`, `resourceId`, `status`, sanitized `metadata`, `requestId`, and monotonic local `sequence`. Metadata is treated as untrusted: keys such as `privateKey`, `secretKey`, `seed`, `seedPhrase`, `mnemonic`, `password`, `token`, `accessToken`, `refreshToken`, `authorization`, `apiKey`, and `secret` are redacted; circular values, functions, class instances, and oversized nested values are bounded before logging.
+
+Logs are buffered in memory and flushed in batches to encrypted local records. Each record is encrypted with Web Crypto `AES-GCM` and a fresh random IV before persistence. The logger stores encrypted records and a manifest in `localStorage`, capped to a bounded retained window to avoid unbounded growth. A non-extractable AES key is stored in IndexedDB when the browser allows it; if IndexedDB key storage is unavailable, the logger falls back to a session-only key, meaning encrypted records remain persisted but may not be decryptable after the tab closes.
+
+Integrity is tamper-evident, not tamper-proof. Each encrypted record is linked with a SHA-256 hash chain (`previousHash` and `hash`), and exports include a SHA-256 digest over the retained record hashes. `verifyAuditLogIntegrity()` detects modified encrypted payloads, reordered records, broken links, and manifest mismatches where retained metadata is available.
+
+`exportAuditLogs()` creates `audit-log-YYYY-MM-DD.json.enc`. If the File System Access API is available, the browser can prompt for a save location; otherwise the logger falls back to a downloadable encrypted Blob. Browsers do not allow silent continuous writes to arbitrary local files, so the dashboard preserves encrypted local records continuously and uses explicit user-triggered export for local files.
+### Gas Usage Heatmap
+
+`GasHeatmap` visualizes Soroban resource cost per contract function so gas spikes become obvious at a glance. Functions are rows; resource categories (CPU instructions, memory, ledger reads, ledger writes, events) are columns. Each cell is colored with a D3 sequential scale (`d3-scale-chromatic`'s `interpolateYlOrRd`) and positioned with `d3-scale`'s `scaleBand`. Color **intensity is normalized per metric column**, so the most expensive function for each resource stands out, and those cells are flagged as **hotspots** (also summarized below the grid) — satisfying "hotspots identified".
+
+```tsx
+import GasHeatmap, { type FunctionGasUsage } from '@/components/GasHeatmap';
+
+// Default: representative per-function costs for the Vero contract.
+<GasHeatmap />
+
+// Inject real data (e.g. from testnet transaction simulation).
+const usage: FunctionGasUsage[] = [
+  { functionName: 'cast_vote', costs: { cpuInsns: 12_500_000, memBytes: 524_288, ledgerReads: 8, ledgerWrites: 3, events: 2 } },
+  // ...
+];
+<GasHeatmap data={usage} />
+```
+
+The pure helpers `buildHeatmap()`, `findHotspots()`, and `formatGas()` are exported and unit-tested independently of rendering. The dataset is held in local component state and is injectable via the `data` prop, so a live testnet simulation feed can replace the default without changing the view.
+
+> **Jest note:** D3 v4+ ships ESM-only packages. `jest.config.js` overrides `transformIgnorePatterns` to transform the `d3-*` modules used here.
+
+---
+
 ### Webhook Relayer
 
 The relayer (`index.js`) is a lightweight Express server that ingests GitHub webhooks and registers qualifying PRs on-chain:
@@ -623,11 +757,14 @@ The `stellar.js` module handles transaction compilation:
 
 ```javascript
 // stellar.js
+const { getVaultSecretStatus } = require('./src/services/vault-node');
+
 async function registerTaskOnChain(githubId) {
-  const secretKey = process.env.STELLAR_SECRET_KEY || '(not set)';
+  const keyStatus = getVaultSecretStatus('STELLAR_SECRET_KEY');
   const network = process.env.STELLAR_NETWORK || 'testnet';
 
   console.log(`[stellar] Registering PR #${githubId} on ${network}`);
+  console.log(`[stellar] Source key loaded: ${keyStatus.configured ? 'YES (vault)' : 'NO (vault entry missing)'}`);
 
   const txPayload = {
     operation: 'manageData',
