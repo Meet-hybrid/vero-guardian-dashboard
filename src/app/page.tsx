@@ -13,6 +13,7 @@ import NetworkStatus from '@/components/NetworkStatus';
 import PRFeed from '@/components/PRFeed';
 import TaskCard from '@/components/TaskCard';
 import ThemeToggle from '@/components/ThemeToggle';
+import SessionTimer from '@/components/timer';
 import { useRole } from '@/context/RoleContext';
 import { useWallet } from '@/context/WalletContext';
 import type { UserRole } from '@/services/roleClient';
@@ -180,6 +181,12 @@ export default function Home(): ReactElement {
 
           {/* Right Column - Admin Management & Quick Actions */}
           <div className="space-y-6">
+            <ErrorBoundary>
+              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+                <SessionTimer />
+              </div>
+            </ErrorBoundary>
+
             <ErrorBoundary>
               <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
                 <GlobalStateSearch />
