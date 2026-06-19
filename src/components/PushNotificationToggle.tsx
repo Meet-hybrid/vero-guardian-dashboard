@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, BellOff, Loader2 } from 'lucide-react';
+import { savePushSubscription, getPushSubscription } from '@/services/push';
 
 async function urlBase64ToUint8Array(base64String: string): Promise<Uint8Array> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -65,6 +66,7 @@ export default function PushNotificationToggle() {
     const pushManager = registration.pushManager as PushManager;
     const existingSubscription = await pushManager.getSubscription();
     if (existingSubscription) {
+      await savePushSubscription(existingSubscription);
       setIsSubscribed(true);
       return;
     }
@@ -84,6 +86,8 @@ export default function PushNotificationToggle() {
       userVisibleOnly: true,
       applicationServerKey: applicationServerKeyBuffer,
     });
+
+    await savePushSubscription(subscription);
 
     const response = await fetch('/api/push', {
       method: 'POST',
@@ -116,18 +120,26 @@ export default function PushNotificationToggle() {
       return;
     }
 
-    void registerServiceWorker()
-      .then(async (registration) => {
-        if (!registration || !registration.pushManager) {
-          return;
-        }
+    const checkSubscription = async () => {
+      const localSubscription = await getPushSubscription();
+      if (localSubscription) {
+        setIsSubscribed(true);
+        return;
+      }
 
-        const subscription = await registration.pushManager.getSubscription();
-        setIsSubscribed(Boolean(subscription));
-      })
-      .catch(() => {
-        setError('Unable to initialize push notifications.');
-      });
+      const registration = await registerServiceWorker();
+      if (registration?.pushManager) {
+        const swSubscription = await registration.pushManager.getSubscription();
+        setIsSubscribed(Boolean(swSubscription));
+        if (swSubscription) {
+          await savePushSubscription(swSubscription);
+        }
+      }
+    };
+
+    void checkSubscription().catch(() => {
+      setError('Unable to initialize push notifications.');
+    });
   }, [registerServiceWorker]);
 
   if (!isSupported) {
