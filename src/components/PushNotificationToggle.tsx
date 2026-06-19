@@ -67,6 +67,7 @@ export default function PushNotificationToggle() {
     const pushManager = registration.pushManager as PushManager;
     const existingSubscription = await pushManager.getSubscription();
     if (existingSubscription) {
+      await savePushSubscription(existingSubscription);
       setIsSubscribed(true);
       return;
     }
@@ -86,6 +87,8 @@ export default function PushNotificationToggle() {
       userVisibleOnly: true,
       applicationServerKey: applicationServerKeyBuffer,
     });
+
+    await savePushSubscription(subscription);
 
     const response = await fetch('/api/push', {
       method: 'POST',
@@ -118,11 +121,22 @@ export default function PushNotificationToggle() {
       return;
     }
 
-    void registerServiceWorker()
-      .then(async (registration) => {
-        if (!registration || !registration.pushManager) {
-          return;
+    const checkSubscription = async () => {
+      const localSubscription = await getPushSubscription();
+      if (localSubscription) {
+        setIsSubscribed(true);
+        return;
+      }
+
+      const registration = await registerServiceWorker();
+      if (registration?.pushManager) {
+        const swSubscription = await registration.pushManager.getSubscription();
+        setIsSubscribed(Boolean(swSubscription));
+        if (swSubscription) {
+          await savePushSubscription(swSubscription);
         }
+      }
+    };
 
         const subscription = await registration.pushManager.getSubscription();
         setIsSubscribed(Boolean(subscription));
