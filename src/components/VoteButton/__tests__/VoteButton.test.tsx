@@ -13,14 +13,20 @@ jest.mock('@/services/contractClient', () => ({
 jest.mock('@/context/RoleContext', () => ({
   useRole: jest.fn(),
 }));
+jest.mock('@/context/NetworkContext', () => ({
+  useNetwork: jest.fn(),
+}));
 jest.mock('@/components/Toast');
 jest.mock('@/utils/logger', () => ({
   appendAuditEvent: jest.fn(() => Promise.resolve()),
 }));
 
+import { useNetwork } from '@/context/NetworkContext';
+
 const mockCastVote = castVote as jest.MockedFunction<typeof castVote>;
 const mockUseRole = useRole as jest.MockedFunction<typeof useRole>;
 const mockUseToast = useToast as jest.MockedFunction<typeof useToast>;
+const mockUseNetwork = useNetwork as jest.MockedFunction<typeof useNetwork>;
 const mockAppendAuditEvent = appendAuditEvent as jest.MockedFunction<typeof appendAuditEvent>;
 const mockShowToast = jest.fn();
 const mockRefreshRole = jest.fn();
@@ -48,6 +54,18 @@ function renderVoteButton(publicKey: string | null = 'GPUBKEY'): HTMLElement {
 
 beforeEach(() => {
   mockUseToast.mockReturnValue({ showToast: mockShowToast });
+  mockUseNetwork.mockReturnValue({
+    networkConfig: {
+      horizonUrl: 'https://horizon-testnet.stellar.org',
+      sorobanRpcUrl: 'https://soroban-testnet.stellar.org',
+      networkPassphrase: 'Test SDF Network ; September 2015',
+    },
+    isCustomConfig: false,
+    setHorizonUrl: jest.fn(),
+    setSorobanRpcUrl: jest.fn(),
+    setNetworkPassphrase: jest.fn(),
+    resetToDefaults: jest.fn(),
+  });
   mockRole();
   mockCastVote.mockResolvedValue('deafhash');
   mockForceSync.mockResolvedValue(undefined);
@@ -69,7 +87,7 @@ describe('VoteButton', () => {
     expect(button).toBeEnabled();
     fireEvent.click(button);
 
-    await waitFor(() => expect(mockCastVote).toHaveBeenCalledWith(42, 'GPUBKEY'));
+    await waitFor(() => expect(mockCastVote).toHaveBeenCalledWith(42, 'GPUBKEY', expect.any(String), expect.any(String)));
     await waitFor(() =>
       expect(mockAppendAuditEvent).toHaveBeenCalledWith(
         expect.objectContaining({
