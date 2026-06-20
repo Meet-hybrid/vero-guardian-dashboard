@@ -3,6 +3,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bell, BellOff, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { getPushSubscription, savePushSubscription } from '@/services/push';
+
+const PUSH_SUBSCRIPTION_KEY = 'vero_push_subscription';
+
+function savePushSubscription(subscription: PushSubscription): void {
+  try {
+    localStorage.setItem(PUSH_SUBSCRIPTION_KEY, JSON.stringify(subscription.toJSON()));
+  } catch {
+    // localStorage may be unavailable in some environments
+  }
+}
+
+function getPushSubscription(): PushSubscriptionJSON | null {
+  try {
+    const stored = localStorage.getItem(PUSH_SUBSCRIPTION_KEY);
+    return stored ? (JSON.parse(stored) as PushSubscriptionJSON) : null;
+  } catch {
+    return null;
+  }
+}
 
 async function urlBase64ToUint8Array(base64String: string): Promise<Uint8Array> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -38,7 +58,7 @@ export default function PushNotificationToggle() {
       scope: '/',
     });
 
-    return await registration.ready;
+    return registration;
   }, []);
 
   const subscribeToPush = useCallback(async () => {
@@ -67,7 +87,7 @@ export default function PushNotificationToggle() {
     const pushManager = registration.pushManager as PushManager;
     const existingSubscription = await pushManager.getSubscription();
     if (existingSubscription) {
-      await savePushSubscription(existingSubscription);
+      await savePushSubscription(existingSubscription.toJSON() as any);
       setIsSubscribed(true);
       return;
     }
@@ -88,14 +108,14 @@ export default function PushNotificationToggle() {
       applicationServerKey: applicationServerKeyBuffer,
     });
 
-    await savePushSubscription(subscription);
+    await savePushSubscription(subscription.toJSON() as any);
 
     const response = await fetch('/api/push', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ subscription }),
+      body: JSON.stringify({ subscription: subscription.toJSON() }),
     });
 
     if (!response.ok) {
@@ -133,18 +153,15 @@ export default function PushNotificationToggle() {
         const swSubscription = await registration.pushManager.getSubscription();
         setIsSubscribed(Boolean(swSubscription));
         if (swSubscription) {
-          await savePushSubscription(swSubscription);
+          await savePushSubscription(swSubscription.toJSON() as any);
         }
       }
     };
 
-        const subscription = await registration.pushManager.getSubscription();
-        setIsSubscribed(Boolean(subscription));
-      })
-      .catch(() => {
-        setError(t('pushNotification.initError'));
-      });
-  }, [registerServiceWorker]);
+    checkSubscription().catch(() => {
+      setError(t('pushNotification.initError'));
+    });
+  }, [registerServiceWorker, t]);
 
   if (!isSupported) {
     return null;
