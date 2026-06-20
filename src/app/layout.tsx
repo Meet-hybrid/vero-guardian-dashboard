@@ -29,13 +29,15 @@ export default function RootLayout({ children }: RootLayoutProps): ReactElement 
         <I18nProvider>
           <AlertProvider>
             <ThemeProvider>
-              <WalletProvider>
-                <RoleProvider>
-                  <ToastProvider>
-                    {children}
-                  </ToastProvider>
-                </RoleProvider>
-              </WalletProvider>
+              <NetworkProvider>
+                <WalletProvider>
+                  <RoleProvider>
+                    <ToastProvider>
+                      {children}
+                    </ToastProvider>
+                  </RoleProvider>
+                </WalletProvider>
+              </NetworkProvider>
             </ThemeProvider>
           </AlertProvider>
         </I18nProvider>
