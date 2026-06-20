@@ -15,7 +15,7 @@ New page-level UI should follow the existing provider and shell structure:
 1. `src/app/layout.tsx` loads global CSS, the Inter font, and the root body
    colors.
 2. Context providers wrap all dashboard UI in this order: i18n, alerts, theme,
-   wallet, role, and toast.
+   network, wallet, role, error modal, and toast.
 3. `src/app/page.tsx` composes the main dashboard with a sticky header, alert
    banner, responsive content grid, guarded admin section, and footer.
 4. Feature components live under `src/components`, with multi-file components
@@ -23,7 +23,9 @@ New page-level UI should follow the existing provider and shell structure:
 
 Keep provider-dependent components as client components with `'use client'`.
 Components that depend on wallet, role, network, alerts, theme, translations,
-or browser storage should stay below the providers in `RootLayout`.
+error modal state, or browser storage should stay below the providers in
+`RootLayout`. Keep `NetworkProvider` above `RoleProvider`, because role checks
+read the active network configuration.
 
 ### Dashboard Cards
 
