@@ -302,6 +302,12 @@ export default function Home(): ReactElement {
           <div className="space-y-6">
             <ErrorBoundary>
               <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
+                <SessionTimer />
+              </div>
+            </ErrorBoundary>
+
+            <ErrorBoundary>
+              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
                 <GlobalStateSearch />
               </div>
             </ErrorBoundary>
