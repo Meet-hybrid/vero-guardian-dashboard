@@ -7,6 +7,8 @@ import {
 } from '@/services/socketClient';
 
 type MockedSocket = jest.Mocked<Pick<Socket, 'on' | 'off' | 'emit' | 'disconnect' | 'connect' | 'removeAllListeners'>> & {
+type MockedSocketKeys = 'on' | 'off' | 'emit' | 'disconnect' | 'connect' | 'removeAllListeners' | 'onAny';
+type MockSocket = Pick<jest.Mocked<Socket>, MockedSocketKeys> & {
   onAny: jest.Mock;
   connected: boolean;
   auth: Record<string, unknown>;
@@ -18,6 +20,12 @@ function getMockedSocket(): MockedSocket {
 
 jest.mock('socket.io-client', () => {
   const mockSocket: MockedSocket = {
+function getMockedSocket(): MockSocket {
+  return getSocket() as unknown as MockSocket;
+}
+
+jest.mock('socket.io-client', () => {
+  const mockSocket: MockSocket = {
     on: jest.fn(),
     off: jest.fn(),
     emit: jest.fn(),
@@ -72,6 +80,7 @@ describe('useSocketIO', () => {
 
   it('connects on autoConnect by default', () => {
     renderHook(() => useSocketIO());
+    // Module-level connect is called; socket should be created
     expect(getSocket()).not.toBeNull();
   });
 
@@ -176,6 +185,7 @@ describe('useSocketIO', () => {
     });
 
     expect(socket.auth).toEqual({});
+    // Token update triggers reconnect: disconnect + connect
     expect(socket.disconnect as jest.Mock).toHaveBeenCalled();
     expect(socket.connect as jest.Mock).toHaveBeenCalled();
   });

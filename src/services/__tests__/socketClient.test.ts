@@ -12,6 +12,8 @@ import {
 } from '@/services/socketClient';
 
 type MockedSocket = jest.Mocked<Pick<Socket, 'on' | 'off' | 'emit' | 'disconnect' | 'connect' | 'removeAllListeners'>> & {
+type MockedSocketKeys = 'on' | 'off' | 'emit' | 'disconnect' | 'connect' | 'removeAllListeners' | 'onAny';
+type MockSocket = Pick<jest.Mocked<Socket>, MockedSocketKeys> & {
   onAny: jest.Mock;
   connected: boolean;
   auth: Record<string, unknown>;
@@ -23,6 +25,12 @@ function getMockedSocket(): MockedSocket {
 
 jest.mock('socket.io-client', () => {
   const mockSocket: MockedSocket = {
+function getMockedSocket(): MockSocket {
+  return getSocket() as unknown as MockSocket;
+}
+
+jest.mock('socket.io-client', () => {
+  const mockSocket: MockSocket = {
     on: jest.fn(),
     off: jest.fn(),
     emit: jest.fn(),
@@ -176,6 +184,8 @@ describe('socketClient', () => {
 
     resetSocketClientForTests();
 
+    // After reset, previously registered listeners are cleared
+    // Connect to trigger status change
     connectSocket();
     expect(statusListener).not.toHaveBeenCalled();
     expect(eventListener).not.toHaveBeenCalled();
