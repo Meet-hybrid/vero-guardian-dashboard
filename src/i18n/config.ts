@@ -137,6 +137,15 @@ export const resources = {
           pending: 'pending',
           inProgress: 'in progress',
         },
+        filter: {
+          all: 'All',
+          statusLabel: 'Status',
+          statusAria: 'Filter tasks by status',
+          priorityLabel: 'Priority',
+          priorityAria: 'Filter tasks by priority',
+          clear: 'Clear filters',
+          noResults: 'No tasks match the selected filters.',
+        },
       },
       vote: {
         voted: 'Voted',
@@ -614,6 +623,15 @@ export const resources = {
           pending: 'pendiente',
           inProgress: 'en progreso',
         },
+        filter: {
+          all: 'Todas',
+          statusLabel: 'Estado',
+          statusAria: 'Filtrar tareas por estado',
+          priorityLabel: 'Prioridad',
+          priorityAria: 'Filtrar tareas por prioridad',
+          clear: 'Limpiar filtros',
+          noResults: 'Ninguna tarea coincide con los filtros seleccionados.',
+        },
       },
       vote: {
         voted: 'Votado',
@@ -1090,6 +1108,15 @@ export const resources = {
           completed: 'termine',
           pending: 'en attente',
           inProgress: 'en cours',
+        },
+        filter: {
+          all: 'Toutes',
+          statusLabel: 'Statut',
+          statusAria: 'Filtrer les taches par statut',
+          priorityLabel: 'Priorite',
+          priorityAria: 'Filtrer les taches par priorite',
+          clear: 'Effacer les filtres',
+          noResults: 'Aucune tache ne correspond aux filtres selectionnes.',
         },
       },
       vote: {
