@@ -2,6 +2,22 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { WalletProvider, useWallet } from '@/context/WalletContext';
 
+jest.mock('@/auth/session', () => {
+  const store: Record<string, string> = {};
+  return {
+    setSessionItem: jest.fn(async (key: string, value: string) => {
+      store[key] = value;
+      try { localStorage.setItem(key, value); } catch {}
+    }),
+    getSessionItem: jest.fn(async (key: string) => store[key] ?? null),
+    sessionManager: {
+      subscribe: jest.fn(() => jest.fn()),
+      startMonitoring: jest.fn(),
+      stopMonitoring: jest.fn(),
+    },
+  };
+});
+
 jest.mock('@stellar/freighter-api', () => ({
   isConnected: jest.fn(),
   getAddress: jest.fn(),
