@@ -325,7 +325,11 @@ export default function Home(): ReactElement {
 
             <ErrorBoundary>
               <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg">
-                <AuditSessionTimer />
+import { ProofHistoryTable } from '@/components/ProofViewer';
+
+// Inside the JSX where AuditSessionTimer is rendered, add the component
+{/* after <AuditSessionTimer /> */}
+<ProofHistoryTable />
               </div>
             </ErrorBoundary>
 
