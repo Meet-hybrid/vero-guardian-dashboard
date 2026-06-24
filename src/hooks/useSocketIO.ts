@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   connectSocket,
   disconnectSocket,
@@ -109,6 +110,7 @@ export function useSocketIO(options: UseSocketIOOptions = {}): UseSocketIOResult
     } catch {
       setStatus('error');
     }
+    try { connectSocket(url, token); } catch { setStatus('error'); }
   }, [url]);
 
   const disconnect = useCallback(() => {

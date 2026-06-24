@@ -282,6 +282,10 @@ describe('BatchTransactionBuilder (Soroban)', () => {
             auth: [] as string[],
             xdr: StellarSdk.xdr.ScVal.scvVoid().toXDR('base64'),
           }],
+          transactionData: new StellarSdk.SorobanDataBuilder().build(),
+          minResourceFee: '100',
+          cost: { cpuInsns: '0', memBytes: '0' },
+          results: [{ auth: [], xdr: 'AAAAAQ==' }],
         } as unknown as StellarSdk.SorobanRpc.Api.SimulateTransactionResponse),
       ),
       sendTransaction: jest.fn(

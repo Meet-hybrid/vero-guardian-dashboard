@@ -11,9 +11,6 @@ jest.mock('@/services/contractClient', () => ({
 jest.mock('@/context/RoleContext', () => ({
   useRole: jest.fn(),
 }));
-jest.mock('@/context/NetworkContext', () => ({
-  useNetwork: jest.fn(),
-}));
 jest.mock('@/components/Toast');
 jest.mock('@/utils/logger', () => ({
   appendAuditEvent: jest.fn(() => Promise.resolve()),
