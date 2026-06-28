@@ -8,6 +8,7 @@ import {
 
 type MockedSocketKeys = 'on' | 'off' | 'emit' | 'disconnect' | 'connect' | 'removeAllListeners' | 'onAny';
 type MockSocket = Pick<jest.Mocked<Socket>, MockedSocketKeys> & {
+type MockedSocket = jest.Mocked<Pick<Socket, 'on' | 'off' | 'emit' | 'disconnect' | 'connect' | 'removeAllListeners'>> & {
   onAny: jest.Mock;
   connected: boolean;
   auth: Record<string, unknown>;
@@ -19,6 +20,12 @@ function getMockedSocket(): MockSocket {
 
 jest.mock('socket.io-client', () => {
   const mockSocket: MockSocket = {
+function getMockedSocket(): MockedSocket {
+  return getSocket() as unknown as MockedSocket;
+}
+
+jest.mock('socket.io-client', () => {
+  const mockSocket: MockedSocket = {
     on: jest.fn(),
     off: jest.fn(),
     emit: jest.fn(),
@@ -87,6 +94,7 @@ describe('useSocketIO', () => {
     act(() => {
       result.current.connect();
     });
+    act(() => { result.current.connect(); });
     expect(getSocket()).not.toBeNull();
   });
 
@@ -95,6 +103,7 @@ describe('useSocketIO', () => {
     act(() => {
       result.current.disconnect();
     });
+    act(() => { result.current.disconnect(); });
     expect(getSocket()).toBeNull();
   });
 
@@ -111,6 +120,7 @@ describe('useSocketIO', () => {
       if (onAnyHandler) {
         onAnyHandler('vote:cast', { prId: 42 });
       }
+      if (onAnyHandler) onAnyHandler('vote:cast', { prId: 42 });
     });
 
     expect(result.current.lastEvent).toEqual({
@@ -130,6 +140,7 @@ describe('useSocketIO', () => {
       if (onAnyHandler) {
         onAnyHandler('pr:update', { id: 42 });
       }
+      if (onAnyHandler) onAnyHandler('pr:update', { id: 42 });
     });
 
     expect(mockInvalidateChainState).toHaveBeenCalledWith(
@@ -145,6 +156,7 @@ describe('useSocketIO', () => {
       timeline: [],
       clear: jest.fn(),
     });
+    mockUseEvents.mockReturnValue({ emit: mockEmit, timeline: [], clear: jest.fn() });
 
     renderHook(() => useSocketIO({ autoConnect: true }));
 
@@ -163,6 +175,11 @@ describe('useSocketIO', () => {
         type: 'reputation_change',
         resource: 'socket.io',
       }),
+      if (onAnyHandler) onAnyHandler('reputation:change', { score: 100 });
+    });
+
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'reputation_change', resource: 'socket.io' }),
     );
   });
 
@@ -179,6 +196,12 @@ describe('useSocketIO', () => {
 
     expect(socket.auth).toEqual({});
     // Token update triggers reconnect: disconnect + connect
+    const { result } = renderHook(() => useSocketIO({ autoConnect: true }));
+
+    const socket = getMockedSocket();
+
+    act(() => { result.current.updateToken('new-token'); });
+
     expect(socket.disconnect as jest.Mock).toHaveBeenCalled();
     expect(socket.connect as jest.Mock).toHaveBeenCalled();
   });

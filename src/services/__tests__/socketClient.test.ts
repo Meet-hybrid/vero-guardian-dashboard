@@ -13,6 +13,7 @@ import {
 
 type MockedSocketKeys = 'on' | 'off' | 'emit' | 'disconnect' | 'connect' | 'removeAllListeners' | 'onAny';
 type MockSocket = Pick<jest.Mocked<Socket>, MockedSocketKeys> & {
+type MockedSocket = jest.Mocked<Pick<Socket, 'on' | 'off' | 'emit' | 'disconnect' | 'connect' | 'removeAllListeners'>> & {
   onAny: jest.Mock;
   connected: boolean;
   auth: Record<string, unknown>;
@@ -24,6 +25,12 @@ function getMockedSocket(): MockSocket {
 
 jest.mock('socket.io-client', () => {
   const mockSocket: MockSocket = {
+function getMockedSocket(): MockedSocket {
+  return getSocket() as unknown as MockedSocket;
+}
+
+jest.mock('socket.io-client', () => {
+  const mockSocket: MockedSocket = {
     on: jest.fn(),
     off: jest.fn(),
     emit: jest.fn(),

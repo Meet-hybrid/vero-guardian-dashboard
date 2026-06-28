@@ -24,6 +24,7 @@ import {
 import { getReputation } from '@/lib/stellar-interact';
 import { useChainState } from '@/hooks/useChainState';
 import { useEvents } from '@/hooks/useEvents';
+import { getSessionItem, setSessionItem, sessionManager } from '@/auth/session';
 
 const STORAGE_KEY = 'vero_wallet_publicKey';
 const PROVIDER_STORAGE_KEY = 'vero_wallet_provider';
@@ -42,6 +43,11 @@ interface WalletContextType {
   /** Connect with a specific provider; defaults to Freighter when omitted. */
   connect: (providerId?: WalletProviderId) => Promise<void>;
   disconnect: () => void;
+  /**
+   * DEV-ONLY: Manually override the active public key without going through
+   * a real wallet handshake. Always a no-op in production.
+   */
+  setMockPublicKey: (key: string) => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -81,8 +87,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const applyVerifiedPublicKey = useCallback(
     (nextPublicKey: string, providerId: WalletProviderId = DEFAULT_WALLET_PROVIDER_ID) => {
-      localStorage.setItem(STORAGE_KEY, nextPublicKey);
-      localStorage.setItem(PROVIDER_STORAGE_KEY, providerId);
+      void setSessionItem(STORAGE_KEY, nextPublicKey).catch((err) => {
+        console.error('Failed to store public key:', err);
+      });
+      void setSessionItem(PROVIDER_STORAGE_KEY, providerId).catch((err) => {
+        console.error('Failed to store provider ID:', err);
+      });
       setPublicKey(nextPublicKey);
       setActiveProvider(providerId);
       setReputation(0);
@@ -94,6 +104,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const clearWalletState = useCallback((nextError: string | null = null) => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(PROVIDER_STORAGE_KEY);
+    localStorage.removeItem('vero_wallet_last_active');
     setPublicKey(null);
     setActiveProvider(null);
     setReputation(0);
@@ -129,8 +140,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
 
       try {
-        const storedPublicKey = localStorage.getItem(STORAGE_KEY);
-        const storedProvider = localStorage.getItem(PROVIDER_STORAGE_KEY);
+        const storedPublicKey = await getSessionItem(STORAGE_KEY);
+        const storedProvider = await getSessionItem(PROVIDER_STORAGE_KEY);
 
         // Only Freighter supports silent session restore; other providers
         // require an explicit reconnect after a reload.
@@ -274,6 +285,34 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     clearWalletState();
   }, [publicKey, activeProvider, clearWalletState, emit]);
 
+  /** DEV-ONLY: override the active public key for local development convenience. */
+  const setMockPublicKey = useCallback(
+    (key: string) => {
+      if (process.env.NODE_ENV === 'production') {
+        return;
+      }
+      applyVerifiedPublicKey(key, DEFAULT_WALLET_PROVIDER_ID);
+    },
+    [applyVerifiedPublicKey]
+  );
+
+  useEffect(() => {
+    const unsubscribe = sessionManager.subscribe(() => {
+      disconnect();
+    });
+
+    if (publicKey) {
+      sessionManager.startMonitoring();
+    } else {
+      sessionManager.stopMonitoring();
+    }
+
+    return () => {
+      unsubscribe();
+      sessionManager.stopMonitoring();
+    };
+  }, [publicKey, disconnect]);
+
   const value = useMemo<WalletContextType>(
     () => ({
       publicKey,
@@ -285,8 +324,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       availableProviders,
       connect,
       disconnect,
+      setMockPublicKey,
     }),
-    [activeProvider, availableProviders, connect, disconnect, error, isLoading, publicKey, reputation]
+    [activeProvider, availableProviders, connect, disconnect, error, isLoading, publicKey, reputation, setMockPublicKey]
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
